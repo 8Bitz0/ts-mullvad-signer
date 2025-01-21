@@ -1,6 +1,7 @@
 mod tailscale;
 
 use clap::Parser;
+use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Parser)]
 struct Args {
@@ -18,7 +19,7 @@ struct Args {
 fn main() {
     let args = Args::parse();
     
-    let spinner = indicatif::ProgressBar::new_spinner();
+    let spinner = ProgressBar::new_spinner();
     spinner.set_message("Fetching nodes...");
     
     let status = match tailscale::LockStatus::fetch_from_cli() {
@@ -32,7 +33,7 @@ fn main() {
     
     spinner.finish_with_message("Fetched nodes");
     
-    let spinner = indicatif::ProgressBar::new_spinner();
+    let spinner = ProgressBar::new_spinner();
     spinner.set_message("Selecting nodes...");
     
     let nodes: Vec<(String, String)> = status.select_mullvad_nodes(args.resign);
@@ -73,8 +74,12 @@ fn main() {
         }
     }
     
-    let progress_bar = indicatif::ProgressBar::new(nodes.len() as u64);
+    let progress_bar = ProgressBar::new(nodes.len() as u64);
     progress_bar.set_message("Signing nodes...");
+    progress_bar.set_style(ProgressStyle::default_bar()
+        .template("{spinner} [{elapsed_precise}] [{bar:40}] {pos}/{len} ({eta})")
+        .unwrap()
+        .progress_chars("#> "));
     
     for n in nodes {
         match tailscale::sign_node(&n.0) {
