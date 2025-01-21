@@ -409,7 +409,6 @@ name = "ts-mullvad-signer"
 version = "0.1.0"
 dependencies = [
  "clap",
- "console",
  "dialoguer",
  "indicatif",
  "serde",
