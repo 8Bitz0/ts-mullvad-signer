@@ -93,7 +93,7 @@ fn main() {
         match tailscale::sign_node(&n.0) {
             Ok(_) => {},
             Err(e) => {
-                progress_bar.abandon_with_message("Failed signing nodes");;
+                progress_bar.abandon_with_message("Failed signing nodes");
                 error(&term_err, format!("Error signing node: {} (node key: {})", e, n.0));
                 std::process::exit(1);
             }
