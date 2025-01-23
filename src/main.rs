@@ -20,9 +20,6 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-
-    let term = Term::stdout();
-    let term_err = Term::stderr();
     
     let spinner = ProgressBar::new_spinner();
     spinner.set_message("Fetching nodes...");
@@ -32,7 +29,7 @@ fn main() {
         Ok(status) => status,
         Err(e) => {
             spinner.abandon_with_message("Failed to fetch nodes");
-            error(&term_err, format!("Error fetching Tailscale lock status: {}", e));
+            error(format!("Error fetching Tailscale lock status: {}", e));
             std::process::exit(1);
         }
     };
@@ -48,15 +45,15 @@ fn main() {
     spinner.finish_with_message("Nodes selected");
     
     if nodes.is_empty() {
-        error(&term_err, "No filtered Mullvad nodes found. Make sure your device is authorized\nto access Mullvad nodes and that they aren't already signed.");
+        error("No filtered Mullvad nodes found. Make sure your device is authorized\nto access Mullvad nodes and that they aren't already signed.");
         std::process::exit(1);
     }
     
     if !args.no_print {
-        term.write_line("Nodes:").unwrap();
+        println!("Nodes:");
         
         for n in &nodes {
-            term.write_line(&format!("- {}: {}", n.1, n.0)).unwrap();
+            println!("- {}: {}", n.1, style(&n.0).dim());
         }
         
         println!();
@@ -76,7 +73,7 @@ fn main() {
             .unwrap();
         
         if !dialog {
-            error(&term_err, "Aborting...");
+            error("Aborting...");
             std::process::exit(0);
         }
     }
@@ -94,7 +91,7 @@ fn main() {
             Ok(_) => {},
             Err(e) => {
                 progress_bar.abandon_with_message("Failed signing nodes");
-                error(&term_err, format!("Error signing node: {} (node key: {})", e, n.0));
+                error(format!("Error signing node: {} (node key: {})", e, n.0));
                 std::process::exit(1);
             }
         };
@@ -104,10 +101,10 @@ fn main() {
     
     progress_bar.finish_with_message("Signed nodes");
     
-    term.write_line("All detected Mullvad nodes should now be signed.").unwrap();
-    term.write_line("You may need to sign additional nodes over time as available Mullvad\nservers change (either manually or by re-running this tool.)").unwrap();
+    println!("All detected Mullvad nodes should now be signed.");
+    println!("You may need to sign additional nodes over time as available Mullvad\nservers change (either manually or by re-running this tool.)");
 }
 
-fn error(stderr: &Term, msg: impl std::fmt::Display) {
-    stderr.write_line(&style(msg.to_string()).red().to_string()).unwrap();
+fn error(msg: impl std::fmt::Display) {
+    eprintln!("{}", style(msg.to_string()).red().to_string());
 }
