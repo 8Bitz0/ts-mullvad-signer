@@ -62,10 +62,10 @@ fn main() {
         println!();
     }
     
-    println!("Selected {} node{}", nodes.len(), if nodes.len() == 1 { "" } else { "s" });
+    println!("Selected {} node{}\n", nodes.len(), if nodes.len() == 1 { "" } else { "s" });
     println!("These nodes have been selected by checking for the node name suffix.");
     println!("{}", style("By signing these nodes, you trust them to interact with your tailnet.").bold());
-    println!("The signing process may take several minutes to complete.");
+    println!("The signing process may take several minutes to complete.\n");
     
     if !args.yes {
         let dialog = dialoguer::Confirm::new()
