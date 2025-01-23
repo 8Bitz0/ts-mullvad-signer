@@ -1,7 +1,7 @@
 mod tailscale;
 
 use clap::Parser;
-use console::{style, Term};
+use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::time::Duration;
 
@@ -106,5 +106,5 @@ fn main() {
 }
 
 fn error(msg: impl std::fmt::Display) {
-    eprintln!("{}", style(msg.to_string()).red().to_string());
+    eprintln!("{}", style(msg.to_string()).red());
 }
