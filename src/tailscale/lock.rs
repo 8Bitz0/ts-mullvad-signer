@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::process::Command;
+use std::io::Read;
+use std::process::{Command, Stdio};
 
 use super::Error;
+
+use crate::error;
 
 const MULLVAD_NODE_SUFFIX: &str = ".mullvad.ts.net.";
 
@@ -50,14 +53,35 @@ pub struct Peer {
 impl LockStatus {
     pub fn fetch_from_cli() -> Result<LockStatus, Error> {
         let mut cmd_base = Command::new("/usr/bin/env");
-        let cmd = cmd_base
+        let mut cmd = cmd_base
             .arg("bash")
             .arg("-c")
-            .arg("tailscale lock status --json");
+            .arg("tailscale lock status --json")
+            .stdout(Stdio::piped())
+            .stdin(Stdio::null())
+            .spawn()
+            .map_err(Error::FetchLockStatus)?;
 
-        let ts_out = cmd.output().map_err(Error::FetchLockStatus)?.stdout;
+        let mut ts_out = cmd.stdout.take().unwrap();
 
-        let ts_out_raw = std::str::from_utf8(&ts_out).map_err(Error::ReadSubprocessOutput)?;
+        let mut ts_out_bytes = Vec::new();
+
+        ts_out.read_to_end(&mut ts_out_bytes).map_err(Error::FetchLockStatus)?;
+        
+        let status = cmd.wait().map_err(Error::FetchLockStatus)?;
+        let code = status.code();
+
+        let code_str = match code {
+            Some(c) => c.to_string(),
+            None => "Unknown".to_string(),
+        };
+
+        if !status.success() {
+            error(format!("Signing node failed with code: {}", code_str));
+            return Err(Error::TailscaleSubprocess(code))
+        }
+
+        let ts_out_raw = std::str::from_utf8(&ts_out_bytes).map_err(Error::ReadSubprocessOutput)?;
 
         let status = match serde_json::from_str::<LockStatus>(ts_out_raw) {
             Ok(o) => o,
@@ -96,11 +120,25 @@ pub fn sign_node(key: impl std::fmt::Display) -> Result<(), Error> {
         .arg("bash")
         .arg("-c")
         .arg(format!("tailscale lock sign {}", key))
+        .stdout(Stdio::null())
+        .stdin(Stdio::null())
         .status();
     
-    match cmd {
-        Ok(_) => {},
+    let status = match cmd {
+        Ok(s) => s,
         Err(e) => return Err(Error::SignNode(e)),
+    };
+    
+    let code = status.code();
+    
+    let code_str = match code {
+        Some(c) => c.to_string(),
+        None => "Unknown".to_string(),
+    };
+    
+    if !status.success() {
+        error(format!("Signing node failed with code: {}", code_str));
+        return Err(Error::TailscaleSubprocess(code))
     }
     
     Ok(())

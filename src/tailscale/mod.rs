@@ -12,4 +12,6 @@ pub enum Error {
     ParseOutput(#[source] serde_json::Error),
     #[error("Error signing node: {0}")]
     SignNode(#[source] std::io::Error),
+    #[error("Tailscale subprocess error")]
+    TailscaleSubprocess(Option<i32>),
 }

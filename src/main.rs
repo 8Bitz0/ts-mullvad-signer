@@ -1,9 +1,9 @@
-mod tailscale;
-
 use clap::Parser;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::time::Duration;
+
+mod tailscale;
 
 #[derive(Parser)]
 struct Args {
