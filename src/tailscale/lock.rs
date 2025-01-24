@@ -8,7 +8,7 @@ use crate::error;
 
 const MULLVAD_NODE_SUFFIX: &str = ".mullvad.ts.net.";
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LockStatus {
     #[serde(rename = "Enabled")]
     pub enabled: bool,
@@ -28,7 +28,7 @@ pub struct LockStatus {
     pub filtered_peers: Vec<Peer>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TrustedKey {
     #[serde(rename = "Key")]
     pub key: String,
@@ -36,7 +36,7 @@ pub struct TrustedKey {
     pub votes: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Peer {
     #[serde(rename = "Name")]
     pub name: String,
@@ -83,10 +83,7 @@ impl LockStatus {
 
         let ts_out_raw = std::str::from_utf8(&ts_out_bytes).map_err(Error::ReadSubprocessOutput)?;
 
-        let status = match serde_json::from_str::<LockStatus>(ts_out_raw) {
-            Ok(o) => o,
-            Err(e) => return Err(Error::ParseOutput(e)),
-        };
+        let status = Self::parse(ts_out_raw)?;
 
         Ok(status)
     }
@@ -111,6 +108,10 @@ impl LockStatus {
         }
 
         nodes
+    }
+    
+    fn parse(input: &str) -> Result<LockStatus, Error> {
+        serde_json::from_str::<LockStatus>(input).map_err(Error::ParseOutput)
     }
 }
 
@@ -142,4 +143,62 @@ pub fn sign_node(key: impl std::fmt::Display) -> Result<(), Error> {
     }
     
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn parse_lock_status() {
+        let status_raw = include_str!("../test/lock-status.json");
+        
+        let status = LockStatus::parse(status_raw).unwrap();
+        
+        let peers = vec![
+            Peer {
+                name: "nz-akl-wg-302.mullvad.ts.net.".to_string(),
+                id: 10000000000000,
+                stable_id: "000000000000".to_string(),
+                tailscale_ips: vec![
+                    "100.0.0.0".to_string(),
+                    "0000:0000:0000:0000:0000:0000:0000:0000".to_string(),
+                ],
+                node_key: "nodekey:0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+            },
+            Peer {
+                name: "us-bos-wg-102.mullvad.ts.net.".to_string(),
+                id: 10000000000000,
+                stable_id: "000000000000".to_string(),
+                tailscale_ips: vec![
+                    "100.0.0.0".to_string(),
+                    "0000:0000:0000:0000:0000:0000:0000:0000".to_string(),
+                ],
+                node_key: "nodekey:0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+            },
+        ];
+        
+        assert_eq!(status, LockStatus {
+            enabled: true,
+            head: vec![
+                152,
+                59,
+            ],
+            public_key: "nlpub:0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+            node_key: "nodekey:0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+            node_key_signed: true,
+            trusted_keys: vec![
+                TrustedKey {
+                    key: "nlpub:0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                    votes: 1,
+                },
+                TrustedKey {
+                    key: "nlpub:0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                    votes: 1,
+                },
+            ],
+            visible_peers: peers.clone(),
+            filtered_peers: peers.clone(),
+        })
+    }
 }
